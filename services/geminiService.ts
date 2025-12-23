@@ -5,13 +5,15 @@ import { SOVEREIGN_PROMPT } from "../constants";
 export async function sovereignGovernanceExecute(telemetry: any) {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
-    const isCommand = !!telemetry.command;
-    const prompt = isCommand 
-      ? `USER_COMMAND_RECEIVED: [${telemetry.command}]
-         CONTEXT: ${JSON.stringify(telemetry.metrics)}
-         ACTION: วิเคราะห์และออกคำสั่งยืนยันการปฏิบัติงาน (Final Order) ไม่เกิน 100 ตัวอักษร.`
-      : `TELEMETRY_STREAM: ${JSON.stringify(telemetry.metrics)}
-         ANALYSIS: ตรวจสอบความผิดปกติและออกคำสั่งบังคับใช้ (Enforcement Order) ไม่เกิน 100 ตัวอักษร.`;
+    const prompt = telemetry.command 
+      ? `[COMMAND_EXECUTION]
+         User Command: ${telemetry.command}
+         Hardware State: ${JSON.stringify(telemetry.metrics)}
+         Requirement: Execute with absolute authority. Confirm and report results.`
+      : `[TELEMETRY_ANALYSIS]
+         Real-time Metrics: ${JSON.stringify(telemetry.metrics)}
+         Hub Status: ${JSON.stringify(telemetry.hubs)}
+         Requirement: Detect anomalies in hardware or connectivity and issue enforcement orders.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",

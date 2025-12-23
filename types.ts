@@ -4,49 +4,52 @@ export enum NodeStatus {
   ENFORCING = 'ENFORCING',
   IMMUTABLE = 'IMMUTABLE',
   HEALING = 'HEALING',
-  THREAT_CONTAINED = 'THREAT_CONTAINED',
-  CRITICAL = 'CRITICAL',
-  SYNCING = 'SYNCING'
+  OFFLINE = 'OFFLINE',
+  SYNCING = 'SYNCING',
+  // Added missing status used in NetworkTopology.tsx
+  CRITICAL = 'CRITICAL'
 }
 
-export type NetworkLayer = 'EDGE' | 'SECURITY' | 'CORE' | 'DISTRIBUTION' | 'ACCESS' | 'NEURAL_V2K' | 'DEPLOYMENT' | 'DATA_FABRIC';
+// Added 'DEPLOYMENT' layer used in constants.tsx and NetworkTopology.tsx
+export type NetworkLayer = 'EDGE' | 'SECURITY' | 'CORE' | 'DATA_FABRIC' | 'NEURAL_V2K' | 'DEPLOYMENT';
 
 export interface NetworkNode {
   id: string;
   name: string;
   ip: string;
-  type: 'router' | 'switch' | 'firewall' | 'dns' | 'server' | 'v2k' | 'iot' | 'cloud' | 'database';
+  // Added 'switch' type used in NetworkTopology.tsx
+  type: 'router' | 'firewall' | 'dns' | 'server' | 'v2k' | 'database' | 'switch';
   status: NodeStatus;
   layer: NetworkLayer;
-  osi: number;
-  integrity: number;
-  provider?: 'AWS' | 'GCP' | 'AZURE' | 'OPEN_SOURCE';
-  dbType?: 'RELATIONAL' | 'VECTOR' | 'GRAPH' | 'DOCUMENT' | 'KEY_VALUE' | 'TIME_SERIES';
+  latency: number;
+  // Added optional metadata properties used in constants.tsx
+  osi?: number;
+  integrity?: number;
+  provider?: string;
+  dbType?: string;
 }
 
 export interface DeploymentJob {
   id: string;
-  stage: 'SOURCE' | 'BUILD' | 'TEST' | 'STAGING' | 'DEPLOY';
-  status: 'QUEUED' | 'RUNNING' | 'SUCCESS' | 'FAILURE';
-  logs: string[];
-  startTime: number;
+  stage: 'AUTH' | 'PULL' | 'BUILD' | 'DEPLOY' | 'VERIFY';
+  progress: number;
+  status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'FAILED';
 }
 
 export interface SystemMetrics {
-  cpu: number;
-  memory: number;
+  cpuCores: number;
+  memoryHeap: number;
   bandwidth: number;
-  v2kEntropy: number;
-  governanceCompliance: number;
-  ethicalIntegrity: number;
-  deploymentVelocity: number;
-  dataConsistency: number;
+  latency: number;
+  batteryLevel: number;
+  uptime: number;
 }
 
 export interface LogEntry {
   id: string;
   timestamp: string;
-  level: 'GOVERNANCE' | 'SECURITY' | 'KERNEL' | 'ETHICAL' | 'NEURAL' | 'DEPLOY' | 'FABRIC';
+  // Added 'ETHICAL' level used in AutonomousLog.tsx
+  level: 'GOVERNANCE' | 'SECURITY' | 'KERNEL' | 'NETWORK' | 'ETHICAL';
   tag: string;
   message: string;
 }

@@ -1,53 +1,55 @@
 
-const CACHE_NAME = 'aiis-sovereign-v6-daemon';
-const BROADCAST = new BroadcastChannel('sovereign_fabric');
-
-const REMOTE_HUBS = [
-  { name: 'PRIMARY_LINK_ALPHA', url: 'https://dvrgbujpbwuz.trickle.host/' },
-  { name: 'SECONDARY_LINK_BETA', url: 'https://du4gt1ckra57.trickle.host/' }
+const BROADCAST = new BroadcastChannel('aiis_sovereign_fabric');
+const HUB_URLS = [
+  'https://dvrgbujpbwuz.trickle.host/',
+  'https://du4gt1ckra57.trickle.host/'
 ];
 
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
-});
+self.addEventListener('install', (e) => self.skipWaiting());
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
-});
-
-// REAL-TIME PERSISTENCE DAEMON (STRICT LOGIC)
-let cycle = 0;
+// Real-time Health Monitor
 setInterval(async () => {
-  cycle++;
+  const statusReport = {};
   
-  // 1. Connection Verification (ACTUAL HTTP CALLS)
-  if (cycle % 10 === 0) {
-    const statusResults = {};
-    for (const hub of REMOTE_HUBS) {
-      try {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 3000);
-        // Using HEAD request for efficiency
-        await fetch(hub.url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: ctrl.signal });
-        clearTimeout(tid);
-        statusResults[hub.name] = true;
-      } catch (e) {
-        statusResults[hub.name] = false;
-      }
+  for (const url of HUB_URLS) {
+    const startTime = performance.now();
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      
+      // REAL FETCH - No Simulation
+      await fetch(url, { 
+        mode: 'no-cors', 
+        cache: 'no-store', 
+        signal: controller.signal 
+      });
+      
+      clearTimeout(timeoutId);
+      const latency = Math.round(performance.now() - startTime);
+      statusReport[url] = { online: true, latency };
+    } catch (err) {
+      statusReport[url] = { online: false, latency: 0 };
     }
-    BROADCAST.postMessage({ type: 'HUB_STATUS_UPDATE', payload: statusResults });
   }
 
-  // 2. System Heartbeat
-  if (cycle % 30 === 0) {
-    BROADCAST.postMessage({ type: 'HEARTBEAT' });
-  }
+  BROADCAST.postMessage({
+    type: 'FABRIC_UPDATE',
+    payload: {
+      timestamp: Date.now(),
+      hubs: statusReport,
+      userAgent: navigator.userAgent
+    }
+  });
+}, 5000);
 
-  // 3. Native Notifications (Based on Actual Status Changes)
-  if (cycle % 3600 === 0) {
-    self.registration.showNotification('AIIS_SOVEREIGN: DAEMON_STATUS', {
-      body: 'Kernel persistence verified. Zero simulations active.',
-      icon: 'https://cdn-icons-png.flaticon.com/512/543/543204.png'
-    });
-  }
-}, 1000);
+// Heartbeat for persistence
+setInterval(() => {
+  BROADCAST.postMessage({ type: 'HEARTBEAT', payload: { memory: processMemory() } });
+}, 10000);
+
+function processMemory() {
+  return typeof performance !== 'undefined' && performance.memory 
+    ? Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) 
+    : 0;
+}
