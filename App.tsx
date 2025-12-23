@@ -30,6 +30,7 @@ const App: React.FC = () => {
 
   const lastExecutionRef = useRef<number>(0);
   const sessionStartTime = useRef<number>(0);
+  const [runtime, setRuntime] = useState<number>(0);
 
   const writeAudit = useCallback((level: LogEntry['level'], tag: string, message: string) => {
     const entry: LogEntry = {
@@ -40,6 +41,29 @@ const App: React.FC = () => {
     setLogs(prev => [...prev.slice(-199), entry]);
   }, []);
 
+  // Sync Service Worker Status with UI
+  useEffect(() => {
+    const checkSW = () => {
+      if ((window as any).swActive || navigator.serviceWorker.controller) {
+        setSwStatus('ACTIVE');
+      } else if ((window as any).swOffline) {
+        setSwStatus('FAILED');
+      }
+    };
+    const interval = setInterval(checkSW, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Runtime counter
+  useEffect(() => {
+    if (systemState === 'ENFORCING' && sessionStartTime.current > 0) {
+      const interval = setInterval(() => {
+        setRuntime(Math.floor((Date.now() - sessionStartTime.current) / 1000));
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [systemState]);
+
   // Function to start the core (User interaction required for permissions)
   const initiateSovereignCore = async () => {
     setSystemState('BOOTING');
@@ -49,20 +73,23 @@ const App: React.FC = () => {
     
     // Request Notifications for real background work
     if ('Notification' in window) {
-      const permission = await Notification.requestPermission();
-      writeAudit('SECURITY', 'AUTH', `NOTIFICATION_PERMISSION: ${permission.toUpperCase()}`);
+      try {
+        const permission = await Notification.requestPermission();
+        writeAudit('SECURITY', 'AUTH', `NOTIFICATION_PERMISSION: ${permission.toUpperCase()}`);
+      } catch (e) {
+        writeAudit('SECURITY', 'WARN', "NOTIFICATION_PERMISSION_REQUEST_FAILED");
+      }
     }
 
     setSystemState('INITIALIZING');
     writeAudit('KERNEL', 'RESOURCE', "MAPPING_NETWORK_FABRIC_NODES...");
     
-    // Check Service Worker status from index.html check
-    if ((window as any).swOffline) {
-      setSwStatus('FAILED');
-      writeAudit('KERNEL', 'WARN', "SERVICE_WORKER_UNAVAILABLE: RUNNING_IN_EPHEMERAL_MODE.");
-    } else {
+    // Check for daemon link
+    if (navigator.serviceWorker.controller || (window as any).swActive) {
       setSwStatus('ACTIVE');
       writeAudit('KERNEL', 'DAEMON', "DAEMON_PERSISTENCE_LAYER_CONNECTED.");
+    } else {
+      writeAudit('KERNEL', 'WARN', "SERVICE_WORKER_UNAVAILABLE: RUNNING_IN_EPHEMERAL_MODE.");
     }
 
     setTimeout(() => {
@@ -76,7 +103,7 @@ const App: React.FC = () => {
     if (systemState !== 'ENFORCING') return;
 
     const telemetryLoop = setInterval(() => {
-      // Real memory usage if available
+      // Real memory usage if available from Performance API
       const memory = (performance as any).memory ? 
         Math.round((performance as any).memory.usedJSHeapSize / (1024 * 1024)) : 48;
       
@@ -89,7 +116,7 @@ const App: React.FC = () => {
         governanceCompliance: Math.min(100, prev.governanceCompliance + 0.05)
       }));
 
-      // Real Logic: Cycle through nodes and check integrity
+      // Autonomous scan logic
       const targetNode = nodes[Math.floor(Math.random() * nodes.length)];
       setAuditPath(`${targetNode.name} [${targetNode.ip}]`);
       writeAudit('KERNEL', 'FIM', `Integrity Scan: ${targetNode.id} -> Hash: ${Math.random().toString(16).slice(2,10)} [VALID]`);
@@ -99,7 +126,7 @@ const App: React.FC = () => {
     return () => clearInterval(telemetryLoop);
   }, [systemState, nodes, writeAudit]);
 
-  // Real Governance Loop
+  // Governance Loop (AI decision making)
   useEffect(() => {
     if (systemState !== 'ENFORCING') return;
 
@@ -159,7 +186,7 @@ const App: React.FC = () => {
       {/* HEADER */}
       <header className="h-20 bg-black border-b border-emerald-500/10 flex items-center justify-between px-10 relative z-10 shadow-2xl">
         <div className="flex items-center gap-8">
-          <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
+          <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl shadow-[0_0_10px_rgba(16,185,129,0.1)]">
             <Shield className="w-6 h-6 text-emerald-500" />
           </div>
           <div>
@@ -174,7 +201,7 @@ const App: React.FC = () => {
                 <RefreshCw size={10} className={swStatus === 'ACTIVE' ? 'animate-spin-slow' : ''} /> 
                 DAEMON: {swStatus}
               </span>
-              <span className="text-slate-700 tracking-tighter uppercase">RUNTIME: {Math.floor((Date.now() - sessionStartTime.current)/1000)}s</span>
+              <span className="text-slate-700 tracking-tighter uppercase">RUNTIME: {runtime}s</span>
             </div>
           </div>
         </div>
@@ -208,11 +235,11 @@ const App: React.FC = () => {
             ))}
           </div>
 
-          <div className="flex-1 min-h-0 relative rounded-[3rem] border border-white/5 overflow-hidden bg-black/40">
+          <div className="flex-1 min-h-0 relative rounded-[3rem] border border-white/5 overflow-hidden bg-black/40 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
             <NetworkTopology nodes={nodes} />
           </div>
 
-          <div className="h-24 bg-black/80 border border-emerald-500/10 rounded-3xl flex items-center px-12 justify-between shrink-0 shadow-2xl">
+          <div className="h-24 bg-black/80 border border-emerald-500/10 rounded-3xl flex items-center px-12 justify-between shrink-0 shadow-2xl backdrop-blur-xl">
             <div className="flex gap-16 items-center">
               <div className="flex flex-col gap-1">
                 <span className="text-[9px] text-slate-700 font-black uppercase tracking-[0.4em]">Target Oversight</span>
@@ -229,7 +256,9 @@ const App: React.FC = () => {
                 <div className="text-[9px] text-slate-700 font-black uppercase">Core Latency</div>
                 <div className="text-xs text-emerald-500 font-black fira-code">0.08ms</div>
               </div>
-              <Crosshair size={24} className="text-emerald-500/20 animate-spin-slow" />
+              <div className="p-3 bg-emerald-500/5 rounded-full border border-emerald-500/10">
+                <Crosshair size={24} className="text-emerald-500/40 animate-spin-slow" />
+              </div>
             </div>
           </div>
         </div>
@@ -247,7 +276,7 @@ const App: React.FC = () => {
                 {isExecuting && <RefreshCw size={14} className="text-emerald-500 animate-spin" />}
              </div>
              <div className="flex-1 overflow-y-auto pr-3 custom-scrollbar relative z-10">
-                <div className="text-sm font-black fira-code text-slate-100 leading-relaxed bg-emerald-500/5 p-8 rounded-3xl border border-emerald-500/20">
+                <div className="text-sm font-black fira-code text-slate-100 leading-relaxed bg-emerald-500/5 p-8 rounded-3xl border border-emerald-500/20 shadow-inner">
                    {activeDirective || "STDBY: ANALYZING_SYSTEM_INTEGRITY..."}
                 </div>
                 <div className="mt-10 space-y-6">
@@ -269,11 +298,11 @@ const App: React.FC = () => {
              <Activity size={14} className="text-emerald-500/20" />
              CORE: <span className="text-emerald-500/60 font-black">ENFORCING</span>
           </span>
-          <span className="text-slate-800">BUILD: v6.0.0-PROD</span>
+          <span className="text-slate-800 tracking-tighter">BUILD: v6.0.0-PROD</span>
         </div>
         <div className="flex items-center gap-4 px-4 py-1 bg-emerald-500/5 rounded-full border border-emerald-500/10">
           <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_#10b981]" />
-          <span className="text-emerald-500/80 text-[8px] tracking-widest">SOVEREIGN_STATUS: ACTIVE</span>
+          <span className="text-emerald-500/80 text-[8px] tracking-widest uppercase">SOVEREIGN_STATUS: ACTIVE</span>
         </div>
       </footer>
 

@@ -35,30 +35,23 @@
 <body>
     <div id="root"></div>
     <script>
-        // แก้ไข Origin Mismatch โดยการสร้าง Absolute URL จากตำแหน่งปัจจุบันของเบราว์เซอร์
+        // Use a simple relative path for Service Worker registration.
+        // This is the most reliable way to avoid origin mismatch errors in sandboxed environments.
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                try {
-                    // หา Directory ปัจจุบันเพื่อสร้าง Path ที่ถูกต้องสำหรับ sw.js
-                    const currPath = window.location.pathname;
-                    const dir = currPath.substring(0, currPath.lastIndexOf('/') + 1);
-                    const swUrl = window.location.origin + dir + 'sw.js';
-                    
-                    console.log('Attempting to register Sovereign Daemon at:', swUrl);
-                    
-                    navigator.serviceWorker.register(swUrl, { scope: dir })
-                        .then(reg => {
-                            console.log('Sovereign Daemon Online. Scope:', reg.scope);
-                        })
-                        .catch(err => {
-                            console.error('Daemon Registration Failure:', err.message);
-                            // Fallback สำหรับสภาพแวดล้อมที่บล็อก SW
-                            window.swOffline = true;
-                        });
-                } catch (e) {
-                    console.error('Critical Error during SW setup:', e);
-                }
+                navigator.serviceWorker.register('sw.js', { scope: './' })
+                    .then(reg => {
+                        console.log('Sovereign Daemon Online. Scope:', reg.scope);
+                        window.swActive = true;
+                    })
+                    .catch(err => {
+                        console.warn('Daemon Registration Status:', err.message);
+                        // Flag failure so UI can respond
+                        window.swOffline = true;
+                    });
             });
+        } else {
+            window.swOffline = true;
         }
     </script>
 </body>
