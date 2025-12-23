@@ -35,18 +35,23 @@
 <body>
     <div id="root"></div>
     <script>
-        // Use a simple relative path for Service Worker registration.
-        // This is the most reliable way to avoid origin mismatch errors in sandboxed environments.
+        // Use a relative-absolute path construction to resolve origin mismatch in sandboxed iframes.
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js', { scope: './' })
+                // Determine path relative to origin root
+                const pathname = window.location.pathname;
+                const directory = pathname.substring(0, pathname.lastIndexOf('/'));
+                const swPath = (directory || '') + '/sw.js';
+                
+                console.log('Daemon registration target:', swPath);
+                
+                navigator.serviceWorker.register(swPath, { scope: './' })
                     .then(reg => {
                         console.log('Sovereign Daemon Online. Scope:', reg.scope);
                         window.swActive = true;
                     })
                     .catch(err => {
-                        console.warn('Daemon Registration Status:', err.message);
-                        // Flag failure so UI can respond
+                        console.error('Daemon Registration Failure:', err.message);
                         window.swOffline = true;
                     });
             });
