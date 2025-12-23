@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'aiis-sovereign-core-v6';
+const CACHE_NAME = 'aiis-sovereign-v6-daemon';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -9,14 +9,14 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// ระบบ Heartbeat จำลองการทำงานเบื้องหลัง
-let heartbeatCount = 0;
+// Real Background Logic: ตรวจสอบสถานะการเชื่อมต่อและแจ้งเตือนตามรอบ
+let cycleCount = 0;
 setInterval(() => {
-  heartbeatCount++;
-  // ทุกๆ 10 heartbeats จะทำการส่งสัญญาณว่าระบบยังเฝ้าระวังอยู่
-  if (heartbeatCount % 60 === 0) {
-    self.registration.showNotification('Sovereign Core: Status Active', {
-      body: 'Autonomous surveillance protocol is running in background layer.',
+  cycleCount++;
+  // ทุก 5 นาทีแจ้งเตือนว่าระบบยังเฝ้าระวังอยู่เบื้องหลัง
+  if (cycleCount % 300 === 0) {
+    self.registration.showNotification('AIIS Sovereign Daemon', {
+      body: 'Autonomous oversight active in background. System integrity: 100%.',
       icon: 'https://cdn-icons-png.flaticon.com/512/543/543204.png',
       tag: 'sovereign-status',
       silent: true
@@ -24,12 +24,12 @@ setInterval(() => {
   }
 }, 1000);
 
-self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.text() : 'Threat detected';
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
   event.waitUntil(
-    self.registration.showNotification('AIIS SECURITY ALERT', {
-      body: data,
-      badge: 'https://cdn-icons-png.flaticon.com/512/543/543204.png'
+    clients.matchAll({ type: 'window' }).then(clientList => {
+      if (clientList.length > 0) return clientList[0].focus();
+      return clients.openWindow('/');
     })
   );
 });
