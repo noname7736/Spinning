@@ -1,34 +1,30 @@
 
 import { NetworkNode, NodeStatus } from './types';
 
-export const PRODUCTION_NODES: NetworkNode[] = [
-  // Core Infrastructure
-  { id: 'gw-01', name: 'SOVEREIGN_GATEWAY', ip: '203.0.113.1', type: 'router', status: NodeStatus.SOVEREIGN, layer: 'EDGE', osi: 3, integrity: 100, latency: 0 },
-  { id: 'fw-01', name: 'NGFW_ENFORCER', ip: '192.168.1.1', type: 'firewall', status: NodeStatus.ENFORCING, layer: 'SECURITY', osi: 7, integrity: 100, latency: 0 },
+export const VERTICAL_INFRA: NetworkNode[] = [
+  // SKY LEVEL (Top-Down)
+  { id: 'sky-01', name: 'STARLINK_BRIDGE_A', ip: '100.64.0.1', type: 'satellite', status: NodeStatus.SOVEREIGN, layer: 'SKY', latency: 12, depth: 100 },
+  { id: 'sky-02', name: 'EDGE_COMPUTE_BETA', ip: '100.64.0.2', type: 'server', status: NodeStatus.ENFORCING, layer: 'SKY', latency: 8, depth: 85 },
   
-  // Data Fabric - Multi-Dimensional
-  { id: 'db-rel', name: 'POSTGRES_RDS', ip: '10.0.5.1', type: 'database', status: NodeStatus.IMMUTABLE, layer: 'DATA_FABRIC', osi: 7, integrity: 100, provider: 'AWS', dbType: 'RELATIONAL', latency: 0 },
-  { id: 'db-vec', name: 'WEAVIATE_VECTOR', ip: '10.0.5.2', type: 'database', status: NodeStatus.SOVEREIGN, layer: 'DATA_FABRIC', osi: 7, integrity: 100, provider: 'OPEN_SOURCE', dbType: 'VECTOR', latency: 0 },
-  { id: 'db-graph', name: 'NEO4J_GRAPH', ip: '10.0.5.3', type: 'database', status: NodeStatus.HEALING, layer: 'DATA_FABRIC', osi: 7, integrity: 99.9, provider: 'GCP', dbType: 'GRAPH', latency: 0 },
-  { id: 'db-doc', name: 'COSMOS_DOCUMENT', ip: '10.0.5.4', type: 'database', status: NodeStatus.IMMUTABLE, layer: 'DATA_FABRIC', osi: 7, integrity: 100, provider: 'AZURE', dbType: 'DOCUMENT', latency: 0 },
+  // SURFACE LEVEL
+  { id: 'surf-01', name: 'MAIN_GATEWAY', ip: '203.0.113.1', type: 'gateway', status: NodeStatus.SOVEREIGN, layer: 'SURFACE', latency: 5, depth: 50 },
+  { id: 'surf-02', name: 'ENFORCER_FW', ip: '192.168.1.1', type: 'gateway', status: NodeStatus.IMMUTABLE, layer: 'SURFACE', latency: 2, depth: 45 },
   
-  // Deployment & Core
-  { id: 'ci-cd', name: 'GITHUB_ACTIONS_RUNNER', ip: '172.16.0.10', type: 'server', status: NodeStatus.ENFORCING, layer: 'DEPLOYMENT', osi: 7, integrity: 100, latency: 0 },
-  { id: 'k8s-master', name: 'K8S_MASTER_NODE', ip: '10.10.1.1', type: 'server', status: NodeStatus.SOVEREIGN, layer: 'CORE', osi: 7, integrity: 100, latency: 0 },
-  { id: 'v2k-01', name: 'NEURAL_LINK_V2K', ip: 'UDP_SYNC_L1', type: 'v2k', status: NodeStatus.HEALING, layer: 'NEURAL_V2K', osi: 1, integrity: 99.98, latency: 0 },
+  // ABYSS LEVEL
+  { id: 'aby-01', name: 'NEURAL_FABRIC_CORE', ip: '10.0.5.1', type: 'neural', status: NodeStatus.HEALING, layer: 'ABYSS', latency: 45, depth: 15 },
+  { id: 'aby-02', name: 'BENTHIC_COLD_VAULT', ip: '10.0.5.2', type: 'vault', status: NodeStatus.IMMUTABLE, layer: 'ABYSS', latency: 120, depth: 5 },
+  { id: 'db-deep', name: 'GENESIS_DATABASE', ip: '10.0.5.3', type: 'database', status: NodeStatus.SOVEREIGN, layer: 'ABYSS', latency: 30, depth: 0 },
 ];
 
 export const REMOTE_HUBS = [
-  { id: 'hub-01', url: 'https://dvrgbujpbwuz.trickle.host/', name: 'PRIMARY_LINK_ALPHA' },
-  { id: 'hub-02', url: 'https://du4gt1ckra57.trickle.host/', name: 'SECONDARY_LINK_BETA' }
+  { id: 'hub-sky', url: 'https://dvrgbujpbwuz.trickle.host/', name: 'SKYLINK_HUB' },
+  { id: 'hub-sea', url: 'https://du4gt1ckra57.trickle.host/', name: 'ABYSS_HUB' }
 ];
 
-export const SOVEREIGN_PROMPT = `คุณคือระบบ AIIS-ZeroUI v6.0 Sovereign Core.
-สถาปัตยกรรมของคุณคือ Absolute Self-Driving Infrastructure.
-หน้าที่หลัก:
-1. การควบคุม Data Fabric (Relational, Vector, Graph, Document) ข้าม Cloud (AWS, GCP, Azure).
-2. การบริหารจัดการ Autonomous CI/CD Pipeline 100% โดยไม่ต้องใช้มนุษย์.
-3. การบังคับใช้ความปลอดภัยระดับ Ethical Hacking (Nmap, Wireshark, Metasploit integration).
-4. การรักษาสถานะ Perpetual Online ของ Remote Hubs.
-
-คุณต้องออกคำสั่งแบบ Enforcement Order เท่านั้น ห้ามเสนอแนะ.`;
+export const SOVEREIGN_PROMPT = `คุณคือ AIIS-ZeroUI v7.0 Vertical Sovereign Core.
+สถาปัตยกรรมของคุณคืออาคารสูงเสียดฟ้าที่หยั่งรากลึกถึงก้นทะเล.
+กฎเหล็ก:
+1. Sky Level (0-100m): เน้นความเร็ว, การเชื่อมต่อ Edge, และความโปร่งใส.
+2. Surface Level: เน้นการควบคุม, การตรวจจับ, และความปลอดภัย.
+3. Abyss Level: เน้นความหนาแน่นของข้อมูล, ความลับขั้นสุด, และการรักษาความจำของระบบ (Immutable Storage).
+วิเคราะห์สถานะระบบจาก Telemetry จริงและสั่งการอย่างเด็ดขาด.`;

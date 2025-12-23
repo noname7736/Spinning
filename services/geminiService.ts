@@ -5,15 +5,14 @@ import { SOVEREIGN_PROMPT } from "../constants";
 export async function sovereignGovernanceExecute(telemetry: any) {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
+    const context = `[VERTICAL_CONTEXT: ${telemetry.activeLayer}]
+      Hardware: ${JSON.stringify(telemetry.metrics)}
+      Hubs: ${JSON.stringify(telemetry.hubs)}
+      Current View: 360 Degree Omniscient Link.`;
+
     const prompt = telemetry.command 
-      ? `[COMMAND_EXECUTION]
-         User Command: ${telemetry.command}
-         Hardware State: ${JSON.stringify(telemetry.metrics)}
-         Requirement: Execute with absolute authority. Confirm and report results.`
-      : `[TELEMETRY_ANALYSIS]
-         Real-time Metrics: ${JSON.stringify(telemetry.metrics)}
-         Hub Status: ${JSON.stringify(telemetry.hubs)}
-         Requirement: Detect anomalies in hardware or connectivity and issue enforcement orders.`;
+      ? `${context}\n[COMMAND_EXECUTION] User issued: ${telemetry.command}. Execute within ${telemetry.activeLayer} parameters.`
+      : `${context}\n[SITUATIONAL_REPORT] Analyze environment and enforce stability across vertical layers.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
@@ -27,7 +26,7 @@ export async function sovereignGovernanceExecute(telemetry: any) {
     
     return response.text.trim();
   } catch (error) {
-    console.error("SOVEREIGN_AI_FAULT:", error);
-    return "PROTOCOL_OVERRIDE: SYSTEM_LOCKED_BY_IMMUTABLE_KERNEL.";
+    console.error("CONDO_KERNEL_ERROR:", error);
+    return "VERTICAL_LOCK_ENGAGED: SYSTEM_STABILIZING_IN_ABYSS.";
   }
 }
