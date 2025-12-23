@@ -4,10 +4,10 @@ import {
   Shield, Cpu, Radio, Eye, Command, Lock, Zap, Activity, 
   AlertTriangle, Globe, Database, Server, UserCheck, Layers, 
   CheckCircle2, Search, Crosshair, Fingerprint, Save, Bell, RefreshCw,
-  Power, Terminal
+  Power, Terminal, Link, ExternalLink
 } from 'lucide-react';
 import { NetworkNode, NodeStatus, LogEntry, SystemMetrics } from './types';
-import { PRODUCTION_NODES } from './constants';
+import { PRODUCTION_NODES, REMOTE_HUBS } from './constants';
 import NetworkTopology from './components/NetworkTopology';
 import AutonomousLog from './components/AutonomousLog';
 import { sovereignGovernanceExecute } from './services/geminiService';
@@ -27,6 +27,10 @@ const App: React.FC = () => {
   const [activeDirective, setActiveDirective] = useState<string | null>(null);
   const [auditPath, setAuditPath] = useState("N/A");
   const [swStatus, setSwStatus] = useState<'PENDING' | 'ACTIVE' | 'FAILED'>('PENDING');
+  const [hubStatuses, setHubStatuses] = useState<Record<string, 'ONLINE' | 'SYNCING'>>({
+    'hub-01': 'SYNCING',
+    'hub-02': 'SYNCING'
+  });
 
   const lastExecutionRef = useRef<number>(0);
   const sessionStartTime = useRef<number>(0);
@@ -40,6 +44,28 @@ const App: React.FC = () => {
     };
     setLogs(prev => [...prev.slice(-199), entry]);
   }, []);
+
+  // Remote Hub Persistence Driver (Keep-alive)
+  useEffect(() => {
+    if (systemState !== 'ENFORCING') return;
+
+    const keepAlive = async () => {
+      for (const hub of REMOTE_HUBS) {
+        try {
+          // Use mode 'no-cors' to allow pings to external sites
+          await fetch(hub.url, { mode: 'no-cors', cache: 'no-store' });
+          setHubStatuses(prev => ({ ...prev, [hub.id]: 'ONLINE' }));
+          writeAudit('NETWORK', 'HUB_PERSISTENCE', `Heartbeat successful for ${hub.name} (Perpetual Driver Active)`);
+        } catch (e) {
+          writeAudit('SECURITY', 'HUB_WARN', `Persistence jitter detected for ${hub.name}. Re-initiating driver...`);
+        }
+      }
+    };
+
+    const interval = setInterval(keepAlive, 20000); // Pulse every 20s
+    keepAlive();
+    return () => clearInterval(interval);
+  }, [systemState, writeAudit]);
 
   // Monitor Global Status
   useEffect(() => {
@@ -69,10 +95,8 @@ const App: React.FC = () => {
     sessionStartTime.current = Date.now();
     writeAudit('KERNEL', 'INIT', "COLD_BOOT_INITIALIZED. POWERING_UP_CORE_MODULES...");
     
-    // Aesthetic Delay
     await new Promise(r => setTimeout(r, 1200));
     
-    // Request Auth
     if ('Notification' in window) {
       const p = await Notification.requestPermission();
       writeAudit('SECURITY', 'AUTH', `DAEMON_NOTIFICATIONS_STATE: ${p.toUpperCase()}`);
@@ -86,12 +110,11 @@ const App: React.FC = () => {
     if (navigator.serviceWorker.controller || (window as any).swActive) {
       setSwStatus('ACTIVE');
       writeAudit('KERNEL', 'DAEMON', "PERSISTENT_DAEMON_ESTABLISHED. BACKGROUND_OVERSIGHT: OK.");
-    } else {
-      writeAudit('KERNEL', 'WARN', "PERSISTENCE_LAYER_BYPASSED. RUNNING_IN_EPHEMERAL_ROOT.");
     }
 
     setSystemState('ENFORCING');
     writeAudit('GOVERNANCE', 'STATE', "ENFORCEMENT_PROTOCOL_ACTIVE. ALL_NODES_CAPTURED.");
+    writeAudit('GOVERNANCE', 'HUB_LINK', "AUTONOMOUS_HUB_DRIVER_LOADED: PERSISTENCE_ACTIVE.");
   };
 
   // Real-time Telemetry
@@ -99,7 +122,6 @@ const App: React.FC = () => {
     if (systemState !== 'ENFORCING') return;
 
     const stream = setInterval(() => {
-      // Direct heap usage from Performance API
       const mem = (performance as any).memory ? 
         Math.round((performance as any).memory.usedJSHeapSize / (1024 * 1024)) : 52;
       
@@ -135,7 +157,8 @@ const App: React.FC = () => {
         const order = await sovereignGovernanceExecute({
           nodes,
           metrics,
-          logs: logs.slice(-3).map(l => l.message).join('\n')
+          logs: logs.slice(-3).map(l => l.message).join('\n'),
+          remoteHubs: REMOTE_HUBS
         });
         
         setActiveDirective(order);
@@ -234,6 +257,25 @@ const App: React.FC = () => {
 
           <div className="flex-1 min-h-0 relative rounded-[3.5rem] border border-white/5 overflow-hidden bg-black/40 shadow-[inset_0_0_40px_rgba(0,0,0,0.6)]">
             <NetworkTopology nodes={nodes} />
+            
+            {/* HUB DRIVER OVERLAY */}
+            <div className="absolute top-6 right-6 flex flex-col gap-3 z-20">
+              {REMOTE_HUBS.map(hub => (
+                <div key={hub.id} className="bg-black/80 border border-emerald-500/20 rounded-2xl p-3 flex items-center gap-4 backdrop-blur-md shadow-xl hover:border-emerald-500/60 transition-all group">
+                   <div className={`p-2 rounded-xl bg-emerald-500/10 ${hubStatuses[hub.id] === 'ONLINE' ? 'animate-pulse text-emerald-400' : 'text-slate-600'}`}>
+                      <ExternalLink size={14} />
+                   </div>
+                   <div className="flex flex-col">
+                      <span className="text-[8px] font-black text-slate-500 tracking-[0.2em] uppercase">Autonomous_Hub</span>
+                      <span className="text-[10px] font-black fira-code text-white group-hover:text-emerald-400 transition-colors">{hub.name}</span>
+                   </div>
+                   <div className="ml-2 flex items-center gap-2 bg-emerald-500/5 px-2 py-0.5 rounded-full border border-emerald-500/10">
+                      <div className={`w-1 h-1 rounded-full ${hubStatuses[hub.id] === 'ONLINE' ? 'bg-emerald-500 shadow-[0_0_5px_#10b981]' : 'bg-slate-700'}`} />
+                      <span className="text-[7px] font-black text-emerald-500/70">{hubStatuses[hub.id]}</span>
+                   </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="h-28 bg-black/90 border border-emerald-500/10 rounded-[2.5rem] flex items-center px-16 justify-between shrink-0 shadow-2xl backdrop-blur-xl">
@@ -244,8 +286,8 @@ const App: React.FC = () => {
               </div>
               <div className="h-12 w-px bg-white/5" />
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] text-slate-700 font-black uppercase tracking-[0.5em]">Core_Health</span>
-                <span className="text-sm font-black fira-code text-blue-400/90 uppercase tracking-tighter">Nominal_Enforcement</span>
+                <span className="text-[10px] text-slate-700 font-black uppercase tracking-[0.5em]">Driver_Status</span>
+                <span className="text-sm font-black fira-code text-blue-400/90 uppercase tracking-tighter">Hub_Persistence_Locked</span>
               </div>
             </div>
             <div className="flex items-center gap-10">
@@ -279,7 +321,7 @@ const App: React.FC = () => {
                    {activeDirective || "AWAITING_GOVERNANCE_PROTOCOL_SYNC..."}
                 </div>
                 <div className="mt-12 space-y-8">
-                   <MiniMetric label="AUTONOMY_LEVEL" value={100} color="emerald" />
+                   <MiniMetric label="HUB_PERSISTENCE_DRIVE" value={100} color="emerald" />
                    <MiniMetric label="GOVERNANCE_STABILITY" value={Math.round(metrics.governanceCompliance)} color="blue" />
                 </div>
              </div>

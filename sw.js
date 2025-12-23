@@ -1,6 +1,11 @@
 
 const CACHE_NAME = 'aiis-sovereign-v6-daemon';
 
+const REMOTE_HUBS = [
+  'https://dvrgbujpbwuz.trickle.host/',
+  'https://du4gt1ckra57.trickle.host/'
+];
+
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
@@ -9,14 +14,27 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// Real Background Logic: ตรวจสอบสถานะการเชื่อมต่อและแจ้งเตือนตามรอบ
+// Autonomous Background Persistence Driver
 let cycleCount = 0;
-setInterval(() => {
+setInterval(async () => {
   cycleCount++;
-  // ทุก 5 นาทีแจ้งเตือนว่าระบบยังเฝ้าระวังอยู่เบื้องหลัง
+  
+  // Every 30 seconds, perform a keep-alive ping for remote hubs
+  if (cycleCount % 30 === 0) {
+    for (const url of REMOTE_HUBS) {
+      try {
+        await fetch(url, { mode: 'no-cors', cache: 'no-store' });
+        console.log(`[DAEMON] Persistence Heartbeat sent to: ${url}`);
+      } catch (e) {
+        console.error(`[DAEMON] Persistence failed for: ${url}`);
+      }
+    }
+  }
+
+  // Every 5 minutes, notify user of background status
   if (cycleCount % 300 === 0) {
     self.registration.showNotification('AIIS Sovereign Daemon', {
-      body: 'Autonomous oversight active in background. System integrity: 100%.',
+      body: 'Autonomous oversight active. Remote hubs persistence: SECURED.',
       icon: 'https://cdn-icons-png.flaticon.com/512/543/543204.png',
       tag: 'sovereign-status',
       silent: true
