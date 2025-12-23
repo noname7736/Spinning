@@ -35,23 +35,19 @@
 <body>
     <div id="root"></div>
     <script>
-        // Use a relative-absolute path construction to resolve origin mismatch in sandboxed iframes.
+        // Use a simple relative path to register the Service Worker.
+        // Omitting the 'scope' property allows the browser to default to the 
+        // directory of the service worker script, which is the most compatible 
+        // approach for sandboxed environments like Google AI Studio.
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // Determine path relative to origin root
-                const pathname = window.location.pathname;
-                const directory = pathname.substring(0, pathname.lastIndexOf('/'));
-                const swPath = (directory || '') + '/sw.js';
-                
-                console.log('Daemon registration target:', swPath);
-                
-                navigator.serviceWorker.register(swPath, { scope: './' })
+                navigator.serviceWorker.register('sw.js')
                     .then(reg => {
                         console.log('Sovereign Daemon Online. Scope:', reg.scope);
                         window.swActive = true;
                     })
                     .catch(err => {
-                        console.error('Daemon Registration Failure:', err.message);
+                        console.warn('Daemon Registration Failure:', err.message);
                         window.swOffline = true;
                     });
             });
