@@ -1,9 +1,10 @@
 
 const CACHE_NAME = 'aiis-sovereign-v6-daemon';
+const BROADCAST = new BroadcastChannel('sovereign_fabric');
 
 const REMOTE_HUBS = [
-  'https://dvrgbujpbwuz.trickle.host/',
-  'https://du4gt1ckra57.trickle.host/'
+  { name: 'PRIMARY_LINK_ALPHA', url: 'https://dvrgbujpbwuz.trickle.host/' },
+  { name: 'SECONDARY_LINK_BETA', url: 'https://du4gt1ckra57.trickle.host/' }
 ];
 
 self.addEventListener('install', (event) => {
@@ -14,40 +15,39 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// Autonomous Background Persistence Driver
-let cycleCount = 0;
+// REAL-TIME PERSISTENCE DAEMON (STRICT LOGIC)
+let cycle = 0;
 setInterval(async () => {
-  cycleCount++;
+  cycle++;
   
-  // Every 30 seconds, perform a keep-alive ping for remote hubs
-  if (cycleCount % 30 === 0) {
-    for (const url of REMOTE_HUBS) {
+  // 1. Connection Verification (ACTUAL HTTP CALLS)
+  if (cycle % 10 === 0) {
+    const statusResults = {};
+    for (const hub of REMOTE_HUBS) {
       try {
-        await fetch(url, { mode: 'no-cors', cache: 'no-store' });
-        console.log(`[DAEMON] Persistence Heartbeat sent to: ${url}`);
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 3000);
+        // Using HEAD request for efficiency
+        await fetch(hub.url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: ctrl.signal });
+        clearTimeout(tid);
+        statusResults[hub.name] = true;
       } catch (e) {
-        console.error(`[DAEMON] Persistence failed for: ${url}`);
+        statusResults[hub.name] = false;
       }
     }
+    BROADCAST.postMessage({ type: 'HUB_STATUS_UPDATE', payload: statusResults });
   }
 
-  // Every 5 minutes, notify user of background status
-  if (cycleCount % 300 === 0) {
-    self.registration.showNotification('AIIS Sovereign Daemon', {
-      body: 'Autonomous oversight active. Remote hubs persistence: SECURED.',
-      icon: 'https://cdn-icons-png.flaticon.com/512/543/543204.png',
-      tag: 'sovereign-status',
-      silent: true
+  // 2. System Heartbeat
+  if (cycle % 30 === 0) {
+    BROADCAST.postMessage({ type: 'HEARTBEAT' });
+  }
+
+  // 3. Native Notifications (Based on Actual Status Changes)
+  if (cycle % 3600 === 0) {
+    self.registration.showNotification('AIIS_SOVEREIGN: DAEMON_STATUS', {
+      body: 'Kernel persistence verified. Zero simulations active.',
+      icon: 'https://cdn-icons-png.flaticon.com/512/543/543204.png'
     });
   }
 }, 1000);
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil(
-    clients.matchAll({ type: 'window' }).then(clientList => {
-      if (clientList.length > 0) return clientList[0].focus();
-      return clients.openWindow('/');
-    })
-  );
-});

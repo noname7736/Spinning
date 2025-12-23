@@ -1,15 +1,14 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { NetworkNode, NodeStatus, NetworkLayer } from '../types';
-import { Shield, Zap, Globe, Server, Terminal, Radio, Cpu, Network, Activity } from 'lucide-react';
+import { Shield, Zap, Globe, Server, Radio, Cpu, Network, Activity, Database, Cloud } from 'lucide-react';
 
 interface TopologyProps {
   nodes: NetworkNode[];
 }
 
 const NetworkTopology: React.FC<TopologyProps> = ({ nodes }) => {
-  // Fix: Changed 'IOT_V2K' to 'NEURAL_V2K' to match the NetworkLayer type definition in types.ts
-  const layers: NetworkLayer[] = ['EDGE', 'SECURITY', 'CORE', 'DISTRIBUTION', 'ACCESS', 'NEURAL_V2K'];
+  const layers: NetworkLayer[] = ['EDGE', 'SECURITY', 'DATA_FABRIC', 'DEPLOYMENT', 'CORE', 'NEURAL_V2K'];
   
   const layerY = (layer: NetworkLayer) => {
     const idx = layers.indexOf(layer);
@@ -17,25 +16,22 @@ const NetworkTopology: React.FC<TopologyProps> = ({ nodes }) => {
   };
 
   const getStatusColor = (status: NodeStatus) => {
-    // Fix: Updated switch cases to use valid NodeStatus enum members from types.ts
     switch (status) {
-      case NodeStatus.SOVEREIGN:
-      case NodeStatus.IMMUTABLE:
-        return '#10b981'; // Green (Online/Stable)
-      case NodeStatus.CRITICAL:
-        return '#ef4444'; // Red (Attack/Critical)
-      case NodeStatus.ENFORCING:
-      case NodeStatus.THREAT_CONTAINED:
-        return '#a855f7'; // Purple (Active Enforcement)
-      case NodeStatus.HEALING:
-        return '#3b82f6'; // Blue (Healing/Syncing)
-      default:
-        return '#475569';
+      case NodeStatus.SOVEREIGN: return '#10b981'; // Emerald
+      case NodeStatus.IMMUTABLE: return '#06b6d4'; // Cyan
+      case NodeStatus.CRITICAL: return '#ef4444'; // Red
+      case NodeStatus.ENFORCING: return '#8b5cf6'; // Violet
+      case NodeStatus.HEALING: return '#3b82f6'; // Blue
+      case NodeStatus.SYNCING: return '#f59e0b'; // Amber
+      default: return '#475569';
     }
   };
 
-  const getNodeIcon = (type: string) => {
-    switch (type) {
+  const getNodeIcon = (node: NetworkNode) => {
+    if (node.layer === 'DATA_FABRIC') return <Database size={14} />;
+    if (node.provider) return <Cloud size={14} />;
+    
+    switch (node.type) {
       case 'firewall': return <Shield size={14} />;
       case 'dns': return <Globe size={14} />;
       case 'server': return <Server size={14} />;
@@ -46,61 +42,83 @@ const NetworkTopology: React.FC<TopologyProps> = ({ nodes }) => {
     }
   };
 
+  const connections = useMemo(() => {
+    const lines = [];
+    for (let i = 0; i < nodes.length - 1; i++) {
+      const start = nodes[i];
+      const end = nodes[i + 1];
+      lines.push({ start, end });
+    }
+    return lines;
+  }, [nodes]);
+
   return (
-    <div className="relative w-full h-full bg-slate-950/80 rounded-3xl border border-white/5 overflow-hidden p-6 shadow-2xl backdrop-blur-md">
-      {/* Background Grid */}
-      <div className="absolute inset-0 opacity-5 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:20px_20px]" />
+    <div className="relative w-full h-full bg-[#020617]/90 rounded-[3rem] border border-white/5 overflow-hidden p-8 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+      <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:30px_30px]" />
       
-      <div className="absolute top-4 left-6 flex items-center gap-3 z-10">
-        <div className="p-1 bg-emerald-500/10 rounded">
-          <Activity size={12} className="text-emerald-500 animate-pulse" />
+      <div className="absolute top-8 left-10 flex items-center gap-4 z-10">
+        <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+          <Activity size={14} className="text-emerald-500 animate-pulse" />
         </div>
-        <span className="text-[10px] font-black text-emerald-500 tracking-[0.4em] fira-code uppercase">Infrastructure Fabric v3.0</span>
+        <div className="flex flex-col">
+          <span className="text-[10px] font-black text-emerald-500 tracking-[0.4em] fira-code uppercase">Sovereign_Fabric_v6.0</span>
+          <span className="text-[8px] text-slate-500 font-bold tracking-widest uppercase italic">Real-time_Synapse_Active</span>
+        </div>
       </div>
 
-      <svg viewBox="0 0 600 400" className="w-full h-full relative z-0">
-        {/* Layer connection tracks */}
-        {layers.slice(0, -1).map((layer, i) => (
-          <line 
-            key={layer}
-            x1="50" y1={layerY(layer)} x2="550" y2={layerY(layer)}
-            stroke="#1e293b" strokeWidth="1" strokeDasharray="4 4"
-          />
-        ))}
+      <svg viewBox="0 0 800 500" className="w-full h-full relative z-0">
+        <defs>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
 
-        {/* Dynamic Nodes */}
+        {/* Dynamic Connections */}
+        {connections.map((conn, idx) => {
+          const x1 = 400 + ((idx % 2 === 0 ? 1 : -1) * (Math.floor(idx / 2) * 100 + 50));
+          const y1 = layerY(conn.start.layer);
+          const x2 = 400 + (((idx+1) % 2 === 0 ? 1 : -1) * (Math.floor((idx+1) / 2) * 100 + 50));
+          const y2 = layerY(conn.end.layer);
+          
+          return (
+            <path 
+              key={`path-${idx}`}
+              d={`M ${x1} ${y1} C ${x1} ${(y1+y2)/2}, ${x2} ${(y1+y2)/2}, ${x2} ${y2}`}
+              stroke="url(#line-grad)"
+              strokeWidth="0.5"
+              fill="none"
+              className="opacity-20 animate-pulse"
+            />
+          );
+        })}
+        
+        <linearGradient id="line-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#10b981" />
+          <stop offset="100%" stopColor="#3b82f6" />
+        </linearGradient>
+
+        {/* Node Layers */}
         {nodes.map((node, i) => {
-          const x = 300 + ((i % 2 === 0 ? 1 : -1) * (Math.floor(i / 2) * 80 + 40));
+          const x = 400 + ((i % 2 === 0 ? 1 : -1) * (Math.floor(i / 2) * 100 + 50));
           const y = layerY(node.layer);
           const color = getStatusColor(node.status);
           
           return (
-            <g key={node.id} className="group transition-all duration-500">
-              <circle
-                cx={x} cy={y} r="18"
-                fill="#020617"
-                stroke={color}
-                strokeWidth="2"
-                // Fix: Replaced NodeStatus.ATTACK_DETECTED with NodeStatus.CRITICAL
-                className={node.status === NodeStatus.CRITICAL ? 'animate-ping' : ''}
-              />
-              <circle
-                cx={x} cy={y} r="14"
-                fill={color}
-                className="opacity-5 animate-pulse"
-              />
-              <foreignObject x={x - 7} y={y - 7} width="14" height="14">
+            <g key={node.id} className="cursor-pointer">
+              <circle cx={x} cy={y} r="22" fill="#020617" stroke={color} strokeWidth="1" className="opacity-40" />
+              <circle cx={x} cy={y} r="18" fill="none" stroke={color} strokeWidth="2" filter="url(#glow)" />
+              
+              <foreignObject x={x - 8} y={y - 8} width="16" height="16">
                 <div style={{ color }} className="flex items-center justify-center">
-                  {getNodeIcon(node.type)}
+                  {getNodeIcon(node)}
                 </div>
               </foreignObject>
               
-              <text x={x} y={y + 30} textAnchor="middle" fill={color} fontSize="9" className="fira-code font-bold uppercase tracking-tighter opacity-70 group-hover:opacity-100">
-                {node.name}
-              </text>
-              <text x={x} y={y + 40} textAnchor="middle" fill="#475569" fontSize="7" className="fira-code">
-                {node.ip} {node.osi ? `[L${node.osi}]` : ''}
-              </text>
+              <text x={x} y={y + 35} textAnchor="middle" fill={color} fontSize="8" className="fira-code font-black uppercase tracking-widest">{node.name}</text>
+              <text x={x} y={y + 45} textAnchor="middle" fill="#475569" fontSize="6" className="fira-code font-bold">{node.ip} | {node.provider || 'CORE'}</text>
             </g>
           );
         })}
